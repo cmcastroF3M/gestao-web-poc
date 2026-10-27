@@ -1,0 +1,43 @@
+name: Compilar
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    services:
+      sql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: TesteGestao123
+        ports:
+          - 1433:1433
+    env:
+      GESTAO_TEST_CONNECTION: Server=localhost,1433;User Id=sa;Password=TesteGestao123;Encrypt=False;TrustServerCertificate=True
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Correr testes
+        run: dotnet test Gestao.Tests/Gestao.Tests.csproj --configuration Release
+
+  exe:
+    needs: testes
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Gerar EXE
+        run: dotnet publish Gestao/Gestao.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o publicado
+      - name: Guardar EXE para download
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gestao-EXE
+          path: publicado/Gestao.exe
+          retention-days: 7
